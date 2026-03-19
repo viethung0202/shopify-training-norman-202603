@@ -13,14 +13,37 @@ class SalesService:
     def __init__(self, client: ShopifyGraphQLClient) -> None:
         self.client = client
 
-    def create_customer(self, email: str, first_name: str, last_name: str) -> Dict[str, Any]:
+    def create_customer(
+        self, email: str, first_name: str, last_name: str
+    ) -> Dict[str, Any]:
         """
         TODO:
         - Implement customerCreate mutation.
         """
-        raise NotImplementedError
 
-    def create_order(self, customer_gid: str, variant_gid: str, quantity: int) -> Dict[str, Any]:
+        mutation = """
+        mutation CreateCustomer($input: CustomerInput!) {
+          customerCreate(input: $input) {
+            customer {
+              id
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+
+        variables = {
+            "input": {"email": email, "firstName": first_name, "lastName": last_name}
+        }
+
+        return self.client.execute(query=mutation, variables=variables)
+
+    def create_order(
+        self, customer_gid: str, variant_gid: str, quantity: int
+    ) -> Dict[str, Any]:
         """
         TODO:
         - Implement OrderCreate mutation.

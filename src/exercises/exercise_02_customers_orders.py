@@ -26,7 +26,28 @@ def main() -> None:
     # - Read a variant_id from DB (from products table) or query Shopify
     # - Create draft order
     # - Register IDs into DB registry
-    raise NotImplementedError
+    email = "buyer-05@example.com"
+    first_name = "Jon"
+    last_name = "Doe1"
+
+    print(f"Calling API to create customer: {first_name} {last_name} ({email})...")
+
+    customer_res = sales.create_customer(
+        email=email, first_name=first_name, last_name=last_name
+    )
+
+    customer_id = None
+    try:
+        # Bóc tách ID từ JSON trả về
+        customer_id = customer_res["data"]["customerCreate"]["customer"]["id"]
+    except (KeyError, TypeError):
+        print(f"❌ Lỗi bóc tách Customer ID. Dữ liệu trả về: {customer_res}")
+        return  # Dừng chương trình nếu lỗi tạo khách hàng
+
+    if customer_id and isinstance(customer_id, str):
+        print(f"✅ Success! Customer ID: {customer_id}")
+        # Lưu vào SQLite
+        repo.register_entity("Customer", customer_id, "Training Buyer")
 
 
 if __name__ == "__main__":
