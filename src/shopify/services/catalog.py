@@ -22,7 +22,22 @@ class CatalogService:
         - Implement productCreate for a product without options.
         - Return response JSON.
         """
-        raise NotImplementedError
+        mutation = """
+        mutation CreateSimpleProduct($input: ProductInput!) {
+          productCreate(input: $input) {
+            product {
+              id
+              title
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"input": {"title": title, "status": "ACTIVE"}}
+        return self.client.execute(query=mutation, variables=variables)
 
     def create_product_with_variants(self, title: str) -> Dict[str, Any]:
         """
@@ -30,7 +45,41 @@ class CatalogService:
         - Implement productCreate for a product with options (Size, Color) and variants.
         - Return response JSON.
         """
-        raise NotImplementedError
+
+        mutation = """
+        mutation CreateVariantProduct($input: ProductInput!) {
+          productCreate(input: $input) {
+            product {
+              id
+              title
+              options {
+                id
+                name
+                optionValues {
+                  id
+                  name
+                }
+              }
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+
+        variables = {
+            "input": {
+                "title": title,
+                "status": "ACTIVE",
+                "productOptions": [
+                    {"name": "Color", "values": [{"name": "Red"}, {"name": "Blue"}]},
+                    {"name": "Size", "values": [{"name": "Small"}, {"name": "Large"}]},
+                ],
+            }
+        }
+        return self.client.execute(query=mutation, variables=variables)
 
     def query_products(
         self, first: int = 10, query: Optional[str] = None
@@ -88,14 +137,81 @@ class CatalogService:
         TODO:
         - Implement collection creation for your API version.
         """
-        raise NotImplementedError
+
+        # 1. Định nghĩa Mutation
+        mutation = """
+        mutation CreateCustomCollection($input: CollectionInput!) {
+          collectionCreate(input: $input) {
+            collection {
+              id
+              title
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+
+        # 2. Truyền tham số (Chỉ cần title)
+        variables = {"input": {"title": title}}
+
+        # 3. Thực thi
+        response = self.client.execute(query=mutation, variables=variables)
+
+        # 4. Bóc tách kết quả
+        data = response.get("data", {}).get("collectionCreate", {})
+
+        # Kiểm tra lỗi từ phía người dùng (ví dụ: thiếu quyền, tên không hợp lệ)
+        if data.get("userErrors"):
+            print(f"Lỗi khi tạo Custom Collection: {data['userErrors']}")
+            return None
+
+        return data.get("collection", {}).get("id")
 
     def create_smart_collection(self, title: str) -> Dict[str, Any]:
         """
         TODO:
         - Implement smart collection creation (if supported by your API version).
         """
-        raise NotImplementedError
+
+        mutation = """
+        mutation CreateSmartCollection($input: CollectionInput!) {
+          collectionCreate(input: $input) {
+            collection {
+              id
+              title
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+
+        # Mẹo: Giả sử title là "dev-training Smart Collection",
+        # ta cắt lấy chữ đầu tiên "dev-training" để làm điều kiện Rule
+        prefix = title.split()[0]
+
+        variables = {
+            "input": {
+                "title": title,
+                "ruleSet": {
+                    "appliedDisjunctively": False,
+                    "rules": [
+                        {
+                            "column": "TITLE",
+                            "relation": "STARTS_WITH",
+                            "condition": prefix,
+                        }
+                    ],
+                },
+            }
+        }
+        # Trả về nguyên cục JSON
+        return self.client.execute(query=mutation, variables=variables)
 
     def delete_collection(self, collection_gid: str) -> Dict[str, Any]:
         """

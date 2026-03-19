@@ -59,6 +59,16 @@ def create_tables() -> None:
         )
     """
     )
+    # 4. Bang Registry
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS training_entities (
+            entity_type TEXT,
+            shopify_gid TEXT PRIMARY KEY,
+            note TEXT
+        )
+    """
+    )
 
 
 def register_entity(
@@ -68,7 +78,16 @@ def register_entity(
     TODO:
     Insert an entity into training_entities registry table using raw SQL.
     """
-    raise NotImplementedError
+
+    sql = """
+        INSERT INTO training_entities (shopify_gid, entity_type, note)
+        VALUES (?, ?, ?)
+        ON CONFLICT(shopify_gid) DO UPDATE SET
+            entity_type = excluded.entity_type,
+            note = excluded.note
+    """
+
+    execute(sql, (shopify_gid, entity_type, note))
 
 
 def list_entities(entity_type: str | None = None) -> list[dict[str, Any]]:
