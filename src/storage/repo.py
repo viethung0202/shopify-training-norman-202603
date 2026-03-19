@@ -184,3 +184,24 @@ def list_products_with_variants() -> list[dict[str, Any]]:
         JOIN training_variants v ON p.product_gid = v.product_gid
     """
     return query_all(sql)
+
+def get_variant_id_by_product_id(product_id: int) -> str | None:
+    """
+    Query lấy Shopify Variant GID đầu tiên dựa trên ID nội bộ của Product.
+    Sử dụng query_all và bóc tách phần tử đầu tiên.
+    """
+    sql = """
+        SELECT v.variant_gid 
+        FROM training_variants v
+        JOIN training_products p ON v.product_gid = p.product_gid
+        WHERE p.product_gid = ? 
+        LIMIT 1
+    """
+    # Gọi hàm query_all có sẵn trong dự án của bạn
+    rows = query_all(sql, (product_id,))
+    
+    # Nếu list rows có dữ liệu, lấy dòng đầu tiên và cột đầu tiên (variant_gid)
+    if rows:
+        return rows[0]["variant_gid"] # Hoặc rows[0][0] tùy vào Row factory của bạn
+    
+    return None

@@ -48,7 +48,37 @@ class SalesService:
         TODO:
         - Implement OrderCreate mutation.
         """
-        raise NotImplementedError
+        mutation = """
+        mutation CreateDraftOrder($input: DraftOrderInput!) {
+          draftOrderCreate(input: $input) {
+            draftOrder {
+              id
+              name
+              status
+              totalPrice
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+
+        # Cấu trúc DraftOrderInput yêu cầu lineItems là một mảng (món hàng)
+        variables = {
+            "input": {
+                "customerId": customer_gid,
+                "lineItems": [
+                    {
+                        "variantId": variant_gid,
+                        "quantity": quantity
+                    }
+                ]
+            }
+        }
+
+        return self.client.execute(query=mutation, variables=variables)
 
     def delete_order(self, draft_order_gid: str) -> Dict[str, Any]:
         """
