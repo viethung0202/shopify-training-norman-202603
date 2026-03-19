@@ -32,13 +32,46 @@ class CatalogService:
         """
         raise NotImplementedError
 
-    def query_products(self, first: int = 10, query: Optional[str] = None) -> Dict[str, Any]:
+    def query_products(
+        self, first: int = 10, query: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         TODO:
         - Implement products query (by first, optional search query).
         - Return response JSON.
         """
-        raise NotImplementedError
+        # 1. Định nghĩa câu GraphQL, nhận tham số động $first và $query
+        graphql_query = """
+        query GetProducts($first: Int!, $query: String) {
+          products(first: $first, query: $query) {
+            edges {
+              node {
+                id
+                title
+                variants(first: 10) {
+                  edges {
+                    node {
+                      id
+                      title
+                      price
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+
+        # 2. Tạo dictionary variables để truyền vào GraphQL
+        variables = {"first": first, "query": query}
+
+        # 3. Gửi request qua client (Giả định hàm gửi tên là execute)
+        # Tùy code của bạn mà hàm này có thể là self.client.execute() hoặc self.client.post()
+        response = self.client.execute(query=graphql_query, variables=variables)
+
+        # 4. Trả về đúng cục JSON (Dict[str, Any]) theo yêu cầu của Type Hint
+        return response
 
     def delete_product(self, product_gid: str) -> Dict[str, Any]:
         """

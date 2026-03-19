@@ -28,7 +28,9 @@ class ShopifyGraphQLClient:
             "X-Shopify-Access-Token": self.settings.access_token,
         }
 
-    def execute(self, query: str, variables: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def execute(
+        self, query: str, variables: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Execute a GraphQL operation.
 
@@ -39,4 +41,29 @@ class ShopifyGraphQLClient:
         - If response contains top-level "errors", raise with details
         - Return parsed JSON
         """
-        raise NotImplementedError
+        # 1. Tạo JSON payload
+        payload = {"query": query}
+        if variables:
+            payload["variables"] = variables
+
+        # 2. POST to self.endpoint
+        # GỌI HÀM self._headers() để lấy token và truyền thêm timeout
+        response = requests.post(
+            self.endpoint,
+            json=payload,
+            headers=self._headers(),
+            timeout=self.timeout_seconds,
+        )
+
+        # 3. Raise on non-2xx response codes
+        response.raise_for_status()
+
+        # 4. Parse JSON
+        response_json = response.json()
+
+        # 5. If response contains top-level "errors", raise with details
+        if "errors" in response_json:
+            raise ValueError(f"Lỗi từ GraphQL Shopify: {response_json['errors']}")
+
+        # 6. Return parsed JSON
+        return response_json
