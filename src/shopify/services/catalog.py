@@ -16,7 +16,7 @@ class CatalogService:
     # ----------------------
     # Products
     # ----------------------
-    def create_simple_product(self, title: str) -> Dict[str, Any]:
+    def create_simple_product(self, title: str, track_quantity: bool = False) -> Dict[str, Any]:
         """
         TODO:
         - Implement productCreate for a product without options.
@@ -28,15 +28,26 @@ class CatalogService:
             product {
               id
               title
+              variants(first: 1) {
+                edges {
+                  node {
+                    id
+                    inventoryItem { id tracked }
+                  }
+                }
+              }
             }
-            userErrors {
-              field
-              message
-            }
+            userErrors { field message }
           }
         }
         """
-        variables = {"input": {"title": title, "status": "ACTIVE"}}
+        
+        # SỬA Ở ĐÂY: Đảm bảo cấu trúc variants đúng chuẩn ProductInput
+        variables = {
+            "input": {
+                "title": title
+            }
+        }
         return self.client.execute(query=mutation, variables=variables)
 
     def create_product_with_variants(self, title: str) -> Dict[str, Any]:
@@ -219,3 +230,23 @@ class CatalogService:
         - Implement collection deletion for your API version.
         """
         raise NotImplementedError
+
+    def list_locations(self) -> Dict[str, Any]:
+        """
+        Truy vấn danh sách các Locations (kho hàng) của Store.
+        Cần thiết để lấy Location ID phục vụ việc cập nhật tồn kho.
+        """
+        query = """
+        query GetLocations {
+          locations(first: 1) {
+            edges {
+              node {
+                id
+                name
+                isActive
+              }
+            }
+          }
+        }
+        """
+        return self.client.execute(query=query)

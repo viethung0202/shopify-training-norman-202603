@@ -31,14 +31,25 @@ def main() -> None:
 
     # Step 0: Ensure tables exist
     # TODO: repo.create_tables()
-    raise NotImplementedError
+    repo.create_tables()
 
     # Step 1: Get and store one location (needed for inventory quantity updates)
     # TODO:
     # - Call catalog.list_locations()
     # - Pick one location_gid
     # - repo.upsert_location(location_gid, name)
-    raise NotImplementedError
+    locations_response = catalog.list_locations()
+    locations_edges = locations_response.get("data", {}).get("locations", {}).get("edges", [])   
+    for edge in locations_edges:
+      location_node = edge.get("node", {})
+      location_gid = location_node.get("id")
+      location_name = location_node.get("name")
+
+      if location_gid and location_name:
+            repo.upsert_location(location_gid, location_name)
+            print(f"✅ Đã lưu Location: {location_name} (GID: {location_gid}) vào DB.")
+      else:
+            print(f"⚠️ Bỏ qua một Location do thiếu thông tin: {location_node}")
 
     # Step 2: Create products with required inventory conditions
     # Requirements:

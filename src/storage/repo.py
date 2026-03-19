@@ -59,6 +59,17 @@ def create_tables() -> None:
         )
     """
     )
+    
+    # 3. Bảng Locations
+    execute(
+        """
+        CREATE TABLE IF NOT EXISTS training_locations (
+            location_gid TEXT PRIMARY KEY,
+            name TEXT
+        )
+    """
+    )   
+    
     # 4. Bang Registry
     execute(
         """
@@ -111,7 +122,13 @@ def upsert_location(location_gid: str, name: str) -> None:
     TODO:
     Insert or replace a location row.
     """
-    raise NotImplementedError
+    sql = """
+        INSERT INTO training_locations (location_gid, name)
+        VALUES (?, ?)
+        ON CONFLICT(location_gid) DO UPDATE SET
+            name = excluded.name
+    """
+    execute(sql, (location_gid, name))
 
 
 def get_any_location_gid() -> str:

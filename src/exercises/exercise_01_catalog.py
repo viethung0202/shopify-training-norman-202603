@@ -79,21 +79,31 @@ def main() -> None:
     # Truyền custom_id vào dạng list (vì Shopify thường cho phép 1 sản phẩm nằm ở nhiều collection)
     simple_response = catalog.create_simple_product(title=simple_title)
 
-    # Bóc tách ID an toàn
-    simple_id = None
-    try:
-        simple_id = simple_response["data"]["productCreate"]["product"]["id"]
-    except (KeyError, TypeError):
-        print(f"Error extracting Simple Product ID. Response: {simple_response}")
+    # 2. Kiểm tra lỗi nghiệp vụ từ Shopify trước
+    data = simple_response.get("data", {}).get("productCreate", {})
+    product_node = data.get("product")
+    errors = data.get("userErrors", [])
 
-    if simple_id and isinstance(simple_id, str):
-        print(f"Success! Simple Product ID: {simple_id}")
-        # Lưu vào registry để cleanup
-        repo.register_entity(
-            entity_type="Product",
-            shopify_gid=simple_id,
-            note="Simple Product in Custom Collection",
-        )
+    if errors:
+        print(f"❌ Shopify bận/lỗi: {errors}")
+        return # Dừng lại vì không có ID để làm bước sau
+
+    if product_node:
+        simple_id = product_node.get("id")
+        print(f"✅ Success! Simple Product ID: {simple_id}")
+        
+        # Đừng quên lấy cả inventory_item_id để dùng cho Step 3 nhé!
+        # Vì bạn cần nó để bật 'tracked=True' sau này
+        try:
+            inv_item_id = product_node["variants"]["edges"][0]["node"]["inventoryItem"]["id"]
+            print(f"📦 Inventory Item ID: {inv_item_id}")
+        except (KeyError, IndexError):
+            print("⚠️ Không lấy được Inventory Item ID")
+
+        # Lưu vào registry
+        repo.register_entity("Product", simple_id, "Simple Product Ex 03")
+    else:
+        print(f"❌ Không tạo được sản phẩm. Response: {simple_response}")
 
     # --- 2. Create Product with Variants ---
     variant_title = f"{training_prefix} Variant Product"
