@@ -59,7 +59,7 @@ def create_tables() -> None:
         )
     """
     )
-    
+
     # 3. Bảng Locations
     execute(
         """
@@ -68,8 +68,8 @@ def create_tables() -> None:
             name TEXT
         )
     """
-    )   
-    
+    )
+
     # 4. Bang Registry
     execute(
         """
@@ -137,7 +137,11 @@ def get_any_location_gid() -> str:
     Return one location_gid from training_locations.
     Raise if none exists.
     """
-    raise NotImplementedError
+    sql = "SELECT location_gid FROM training_locations LIMIT 1"
+    rows = query_all(sql)
+    if not rows:
+        raise ValueError("No locations found in DB. Please create one first.")
+    return rows[0]["location_gid"]
 
 
 def upsert_product(
@@ -202,6 +206,7 @@ def list_products_with_variants() -> list[dict[str, Any]]:
     """
     return query_all(sql)
 
+
 def get_variant_id_by_product_id(product_id: int) -> str | None:
     """
     Query lấy Shopify Variant GID đầu tiên dựa trên ID nội bộ của Product.
@@ -216,9 +221,9 @@ def get_variant_id_by_product_id(product_id: int) -> str | None:
     """
     # Gọi hàm query_all có sẵn trong dự án của bạn
     rows = query_all(sql, (product_id,))
-    
+
     # Nếu list rows có dữ liệu, lấy dòng đầu tiên và cột đầu tiên (variant_gid)
     if rows:
-        return rows[0]["variant_gid"] # Hoặc rows[0][0] tùy vào Row factory của bạn
-    
+        return rows[0]["variant_gid"]  # Hoặc rows[0][0] tùy vào Row factory của bạn
+
     return None

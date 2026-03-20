@@ -86,22 +86,22 @@ def main() -> None:
 
     if errors:
         print(f"❌ Shopify bận/lỗi: {errors}")
-        return # Dừng lại vì không có ID để làm bước sau
+        return  # Dừng lại vì không có ID để làm bước sau
 
     if product_node:
         simple_id = product_node.get("id")
         print(f"✅ Success! Simple Product ID: {simple_id}")
-        
-        # Đừng quên lấy cả inventory_item_id để dùng cho Step 3 nhé!
-        # Vì bạn cần nó để bật 'tracked=True' sau này
+
         try:
-            inv_item_id = product_node["variants"]["edges"][0]["node"]["inventoryItem"]["id"]
+            inv_item_id = product_node["variants"]["edges"][0]["node"]["inventoryItem"][
+                "id"
+            ]
             print(f"📦 Inventory Item ID: {inv_item_id}")
         except (KeyError, IndexError):
             print("⚠️ Không lấy được Inventory Item ID")
 
         # Lưu vào registry
-        repo.register_entity("Product", simple_id, "Simple Product Ex 03")
+        repo.register_entity("Product", simple_id, "Custom product")
     else:
         print(f"❌ Không tạo được sản phẩm. Response: {simple_response}")
 

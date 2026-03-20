@@ -16,7 +16,9 @@ class CatalogService:
     # ----------------------
     # Products
     # ----------------------
-    def create_simple_product(self, title: str, track_quantity: bool = False) -> Dict[str, Any]:
+    def create_simple_product(
+        self, title: str, track_quantity: bool = False
+    ) -> Dict[str, Any]:
         """
         TODO:
         - Implement productCreate for a product without options.
@@ -41,16 +43,14 @@ class CatalogService:
           }
         }
         """
-        
+
         # SỬA Ở ĐÂY: Đảm bảo cấu trúc variants đúng chuẩn ProductInput
-        variables = {
-            "input": {
-                "title": title
-            }
-        }
+        variables = {"input": {"title": title}}
         return self.client.execute(query=mutation, variables=variables)
 
-    def create_product_with_variants(self, title: str) -> Dict[str, Any]:
+    def create_product_with_variants(
+        self, title: str, initial_variant_qty=100
+    ) -> Dict[str, Any]:
         """
         TODO:
         - Implement productCreate for a product with options (Size, Color) and variants.
@@ -63,12 +63,13 @@ class CatalogService:
             product {
               id
               title
-              options {
-                id
-                name
-                optionValues {
-                  id
-                  name
+              variants(first: 10) {
+                edges {
+                  node {
+                    id
+                    title
+                    inventoryItem { id }
+                  }
                 }
               }
             }
@@ -80,6 +81,7 @@ class CatalogService:
         }
         """
 
+        # Bước 2: Định nghĩa variables bao gồm cả variants và inventoryQuantities
         variables = {
             "input": {
                 "title": title,
@@ -139,6 +141,219 @@ class CatalogService:
         - Implement productDelete mutation.
         """
         raise NotImplementedError
+
+    def create_product_with_variants_v2(
+        self, title: str, initial_variant_qty: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Tạo product với options (Color, Size) và đầy đủ 4 variants bằng bulk create.
+        - Sử dụng productCreate + productOptions để tạo product & options.
+        - Sau đó productVariantsBulkCreate với strategy REMOVE_STANDALONE_VARIANT để:
+          - Xóa default variant thừa.
+          - Tạo 4 variants + set inventory ngay.
+        - Return response của bulk create (có danh sách variants đã tạo).
+        """
+        # Bước 1: Lấy location ID (cần cho inventoryQuantities)
+        loc_query = """
+          query {
+            locations(first: 1) {
+              edges {
+                node { id }
+              }
+            }
+          }
+      """
+        loc_res = self.client.execute(query=loc_query)
+
+        try:
+            location_id = loc_res["data"]["locations"]["edges"][0]["node"]["id"]
+        except (KeyError, IndexError):
+            raise ValueError("Không tìm thấy location active nào trong store.")
+
+        # Bước 2: Tạo product + options (tạo default variant tạm thời)
+        create_mutation = """
+      mutation productCreate($input: ProductInput!) {
+        productCreate(input: $input) {
+          product {
+            id
+            title
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+      """
+
+        create_variables = {
+            "input": {
+                "title": title,
+                "status": "ACTIVE",
+                "productOptions": [
+                    {"name": "Color", "values": [{"name": "Red"}, {"name": "Blue"}]},
+                    {"name": "Size", "values": [{"name": "Small"}, {"name": "Large"}]},
+                ],
+            }
+        }
+
+        create_res = self.client.execute(
+            query=create_mutation, variables=create_variables
+        )
+
+        if create_res.get("data", {}).get("productCreate", {}).get("userErrors"):
+            return create_res  # Trả lỗi nếu create product fail
+
+        product_id = create_res["data"]["productCreate"]["product"]["id"]
+
+        # Bước 3: Bulk create 4 variants + xóa default variant cũ
+        bulk_mutation = """
+      mutation productVariantsBulkCreate(
+        $productId: ID!
+        $variants: [ProductVariantsBulkInput!]!
+        $strategy: ProductVariantsBulkCreateStrategy
+      ) {
+        productVariantsBulkCreate(
+          productId: $productId
+          variants: $variants
+          strategy: $strategy
+        ) {
+          product {
+            id
+            title
+            options(first: 10) {
+              name
+              values
+            }
+          }
+          productVariants {
+            id
+            title
+            price
+            sku
+            inventoryItem {
+              id
+            }
+            inventoryQuantity
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+      """
+
+        bulk_variables = {
+            "productId": product_id,
+            "strategy": "REMOVE_STANDALONE_VARIANT",  # Xóa default variant thừa
+            "variants": [
+                # Red / Small
+                {
+                    "optionValues": [
+                        {"optionName": "Color", "name": "Red"},
+                        {"optionName": "Size", "name": "Small"},
+                    ],
+                    "price": "29.99",
+                    "inventoryQuantities": [
+                        {
+                            "locationId": location_id,
+                            "availableQuantity": initial_variant_qty,
+                        }
+                    ],
+                },
+                # Red / Large
+                {
+                    "optionValues": [
+                        {"optionName": "Color", "name": "Red"},
+                        {"optionName": "Size", "name": "Large"},
+                    ],
+                    "price": "34.99",
+                    "inventoryQuantities": [
+                        {
+                            "locationId": location_id,
+                            "availableQuantity": initial_variant_qty,
+                        }
+                    ],
+                },
+                # Blue / Small
+                {
+                    "optionValues": [
+                        {"optionName": "Color", "name": "Blue"},
+                        {"optionName": "Size", "name": "Small"},
+                    ],
+                    "price": "29.99",
+                    "inventoryQuantities": [
+                        {
+                            "locationId": location_id,
+                            "availableQuantity": initial_variant_qty,
+                        }
+                    ],
+                },
+                # Blue / Large
+                {
+                    "optionValues": [
+                        {"optionName": "Color", "name": "Blue"},
+                        {"optionName": "Size", "name": "Large"},
+                    ],
+                    "price": "34.99",
+                    "inventoryQuantities": [
+                        {
+                            "locationId": location_id,
+                            "availableQuantity": initial_variant_qty,
+                        }
+                    ],
+                },
+            ],
+        }
+
+        bulk_res = self.client.execute(query=bulk_mutation, variables=bulk_variables)
+
+        # Trả về response của bulk create (chứa variants đầy đủ)
+        return bulk_res
+
+    def update_product_tags(self, product_gid: str, tags: list):
+        """Cập nhật danh sách tags cho sản phẩm."""
+        mutation = """
+        mutation productUpdate($input: ProductInput!) {
+          productUpdate(input: $input) {
+            product {
+              id
+              tags
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {
+            "input": {
+                "id": product_gid,
+                "tags": tags,
+            }
+        }
+        return self.client.execute(query=mutation, variables=variables)
+
+    def update_product_title(self, product_gid: str, new_title: str):
+        """Cập nhật tên mới cho sản phẩm."""
+        mutation = """
+        mutation productUpdate($input: ProductInput!) {
+          productUpdate(input: $input) {
+            product {
+              id
+              title
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"input": {"id": product_gid, "title": new_title}}
+        return self.client.execute(query=mutation, variables=variables)
 
     # ----------------------
     # Collections
@@ -250,3 +465,112 @@ class CatalogService:
         }
         """
         return self.client.execute(query=query)
+
+    def add_products_to_collection(self, collection_gid: str, product_gids: list):
+        mutation = """
+        mutation collectionAddProducts($id: ID!, $productIds: [ID!]!) {
+          collectionAddProducts(id: $id, productIds: $productIds) {
+            collection {
+              id
+              title
+              productsCount {
+                count
+              }
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"id": collection_gid, "productIds": product_gids}
+        return self.client.execute(query=mutation, variables=variables)
+
+    # ----------------------
+    # iventory
+    # ----------------------
+    def set_inventory_tracked(
+        self, inventory_item_gid: str, tracked: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Bật/tắt tracking inventory cho một InventoryItem.
+        """
+        mutation = """
+        mutation InventoryItemUpdate($id: ID!, $input: InventoryItemInput!) {
+        inventoryItemUpdate(id: $id, input: $input) {
+              inventoryItem {
+                id
+                tracked
+              }
+              userErrors {
+                field
+                message
+              }
+            }
+          }
+        """
+
+        variables = {"id": inventory_item_gid, "input": {"tracked": tracked}}
+
+        response = self.client.execute(query=mutation, variables=variables)
+
+        # Kiểm tra lỗi
+        user_errors = (
+            response.get("data", {})
+            .get("inventoryItemUpdate", {})
+            .get("userErrors", [])
+        )
+        if user_errors:
+            raise ValueError(f"Lỗi set tracked: {user_errors}")
+
+        return response
+
+    def set_on_hand_quantity(
+        self, inventory_item_gid: str, location_gid: str, quantity: int = 200
+    ) -> Dict[str, Any]:
+        """
+        Set absolute on-hand quantity = 200 tại location cụ thể.
+        Sử dụng inventorySetQuantities (hỗ trợ absolute set, có compare-and-swap để an toàn concurrent).
+        """
+        mutation = """
+        mutation inventorySetQuantities($input: InventorySetQuantitiesInput!) {
+          inventorySetQuantities(input: $input) {
+            inventoryAdjustmentGroup {
+              id
+            }
+            userErrors {
+              field
+              message
+              code
+            }
+          }
+        }
+        """
+
+        variables = {
+            "input": {
+                "name": "on_hand",
+                "reason": "correction",
+                "ignoreCompareQuantity": True,
+                "quantities": [
+                    {
+                        "inventoryItemId": inventory_item_gid,
+                        "locationId": location_gid,
+                        "quantity": quantity,
+                    }
+                ],
+            }
+        }
+
+        response = self.client.execute(query=mutation, variables=variables)
+
+        user_errors = (
+            response.get("data", {})
+            .get("inventorySetQuantities", {})
+            .get("userErrors", [])
+        )
+        if user_errors:
+            raise ValueError(f"Lỗi set on-hand quantity: {user_errors}")
+
+        return response
