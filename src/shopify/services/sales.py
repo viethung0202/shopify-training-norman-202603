@@ -41,6 +41,24 @@ class SalesService:
 
         return self.client.execute(query=mutation, variables=variables)
 
+    def delete_customer(self, customer_gid: str) -> Dict[str, Any]:
+        """
+        Xóa một khách hàng dựa trên Customer GID.
+        """
+        mutation = """
+        mutation customerDelete($input: CustomerDeleteInput!) {
+          customerDelete(input: $input) {
+            deletedCustomerId
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"input": {"id": customer_gid}}
+        return self.client.execute(query=mutation, variables=variables)
+
     def create_order(
         self, customer_gid: str, variant_gid: str, quantity: int
     ) -> Dict[str, Any]:
@@ -69,12 +87,7 @@ class SalesService:
         variables = {
             "input": {
                 "customerId": customer_gid,
-                "lineItems": [
-                    {
-                        "variantId": variant_gid,
-                        "quantity": quantity
-                    }
-                ]
+                "lineItems": [{"variantId": variant_gid, "quantity": quantity}],
             }
         }
 
@@ -85,4 +98,16 @@ class SalesService:
         TODO:
         - Implement OrderDelete mutation.
         """
-        raise NotImplementedError
+        mutation = """
+        mutation draftOrderDelete($input: DraftOrderDeleteInput!) {
+          draftOrderDelete(input: $input) {
+            deletedId
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"input": {"id": draft_order_gid}}
+        return self.client.execute(query=mutation, variables=variables)

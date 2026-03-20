@@ -106,7 +106,12 @@ def list_entities(entity_type: str | None = None) -> list[dict[str, Any]]:
     TODO:
     Select entities from training_entities using raw SQL.
     """
-    raise NotImplementedError
+    if entity_type:
+        sql = "SELECT * FROM training_entities WHERE entity_type = ?"
+        return query_all(sql, (entity_type,))
+    else:
+        sql = "SELECT * FROM training_entities"
+        return query_all(sql)
 
 
 def delete_entity_record(shopify_gid: str) -> None:
@@ -114,7 +119,7 @@ def delete_entity_record(shopify_gid: str) -> None:
     TODO:
     Delete one entity row by shopify_gid.
     """
-    raise NotImplementedError
+    execute("DELETE FROM training_entities WHERE shopify_gid = ?", (shopify_gid,))
 
 
 def upsert_location(location_gid: str, name: str) -> None:
@@ -227,3 +232,11 @@ def get_variant_id_by_product_id(product_id: int) -> str | None:
         return rows[0]["variant_gid"]  # Hoặc rows[0][0] tùy vào Row factory của bạn
 
     return None
+
+
+def delete_all_entities() -> None:
+    """
+    TODO:
+    Delete all entity rows from the training_entities table.
+    """
+    execute("DELETE FROM training_entities")

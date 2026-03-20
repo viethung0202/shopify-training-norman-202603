@@ -140,7 +140,19 @@ class CatalogService:
         TODO:
         - Implement productDelete mutation.
         """
-        raise NotImplementedError
+        mutation = """
+        mutation productDelete($input: ProductDeleteInput!) {
+          productDelete(input: $input) {
+            deletedProductId
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"input": {"id": product_gid}}
+        return self.client.execute(query=mutation, variables=variables)
 
     def create_product_with_variants_v2(
         self, title: str, initial_variant_qty: int = 100
@@ -444,7 +456,19 @@ class CatalogService:
         TODO:
         - Implement collection deletion for your API version.
         """
-        raise NotImplementedError
+        mutation = """
+        mutation collectionDelete($input: CollectionDeleteInput!) {
+          collectionDelete(input: $input) {
+            deletedCollectionId
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        """
+        variables = {"input": {"id": collection_gid}}
+        return self.client.execute(query=mutation, variables=variables)
 
     def list_locations(self) -> Dict[str, Any]:
         """
