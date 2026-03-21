@@ -20,12 +20,12 @@ def main() -> None:
     # - Implement metafieldsSet mutation
     # - Query metafields for a product
     # - Save any required identifiers into SQLite
-    
-    product_gid = "gid://shopify/Product/8863763038365" 
+
+    product_gid = "gid://shopify/Product/8863763038365"
 
     # --- 1. SET METAFIELD (MUTATION) ---
-    print(f"🚀 Step 1: Setting Metafield for Product: {product_gid}")
-    
+    print(f"Step 1: Setting Metafield for Product: {product_gid}")
+
     set_mutation = """
     mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
       metafieldsSet(metafields: $metafields) {
@@ -43,7 +43,7 @@ def main() -> None:
       }
     }
     """
-    
+
     # Định nghĩa thông tin Metafield
     metafields_input = [
         {
@@ -51,12 +51,14 @@ def main() -> None:
             "namespace": "manual_info1",
             "key": "material",
             "value": "Coton 100%",
-            "type": "single_line_text_field"
+            "type": "single_line_text_field",
         }
     ]
 
-    response = _client.execute(query=set_mutation, variables={"metafields": metafields_input})
-    
+    response = _client.execute(
+        query=set_mutation, variables={"metafields": metafields_input}
+    )
+
     set_data = response.get("data", {}).get("metafieldsSet", {})
     errors = set_data.get("userErrors", [])
 
@@ -70,7 +72,7 @@ def main() -> None:
 
     # --- 2. QUERY METAFIELDS (VERIFY) ---
     print("🔍 Step 2: Querying metafields back from Product...")
-    
+
     query_str = """
     query getProductMetafields($id: ID!) {
       product(id: $id) {
@@ -87,22 +89,27 @@ def main() -> None:
       }
     }
     """
-    
-    query_res = _client.execute(query=query_str, variables={"id": product_gid})
-    edges = query_res.get("data", {}).get("product", {}).get("metafields", {}).get("edges", [])
 
-    print(f"📋 Các Metafields hiện có của sản phẩm {product_gid}:")
+    query_res = _client.execute(query=query_str, variables={"id": product_gid})
+    edges = (
+        query_res.get("data", {})
+        .get("product", {})
+        .get("metafields", {})
+        .get("edges", [])
+    )
+
+    print(f"Các Metafields hiện có của sản phẩm {product_gid}:")
     for edge in edges:
         m = edge["node"]
         print(f" 🔹 {m['namespace']}.{m['key']} = {m['value']} (ID: {m['id']})")
 
         repo.register_entity(
-        entity_type="METAFIELD",
-        shopify_gid=m['id'],
-        note=f"Material info for product {product_gid}"
-    )
-    
-    print("✨ Exercise 06 hoàn tất!")
+            entity_type="METAFIELD",
+            shopify_gid=m["id"],
+            note=f"Material info for product {product_gid}",
+        )
+
+    print("Exercise 06 hoàn tất!")
 
 
 if __name__ == "__main__":
